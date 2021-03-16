@@ -1,5 +1,8 @@
 package com.zenghm.distributed.lock.core;
 
+import com.zenghm.distributed.lock.core.exception.DistributedLockException;
+import com.zenghm.distributed.lock.core.exception.DistributedLockLoseException;
+
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -28,7 +31,7 @@ public interface DistributedLock {
      * circumstances and the exception type must be documented by that
      * {@code Lock} implementation.
      */
-    void lock();
+    void lock() throws DistributedLockException;
 
     /**
      * Acquires the lock unless the current thread is
@@ -165,7 +168,7 @@ public interface DistributedLock {
      *         while acquiring the lock (and interruption of lock
      *         acquisition is supported)
      */
-    boolean tryLock(long time, TimeUnit unit) throws InterruptedException;
+    boolean tryLock(long time, TimeUnit unit) throws DistributedLockException;
 
     /**
      * Releases the lock.
@@ -179,7 +182,7 @@ public interface DistributedLock {
      * Any restrictions and the exception
      * type must be documented by that {@code Lock} implementation.
      */
-    void unlock();
+    void unlock() throws DistributedLockLoseException;
 
     void setLockContext(LockContext context);
 

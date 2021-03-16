@@ -1,5 +1,7 @@
 package com.zenghm.distributed.lock.core;
 
+import com.zenghm.distributed.lock.core.exception.DistributedLockException;
+import com.zenghm.distributed.lock.core.exception.DistributedLockLoseException;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -14,9 +16,10 @@ import java.util.concurrent.TimeUnit;
  * @description xxx
  */
 @Service
-public class DistributedLockFactory implements DistributedLock , ApplicationContextAware {
+public class DistributedLockFactory implements DistributedLock, ApplicationContextAware {
     ApplicationContext applicationContext;
     DistributedLock distributedLock;
+
     /**
      * 是否能进行处理
      *
@@ -31,6 +34,7 @@ public class DistributedLockFactory implements DistributedLock , ApplicationCont
     public void setLockContext(LockContext context) {
         //no thing to do
     }
+
     /**
      * 获取锁的状态
      *
@@ -50,14 +54,15 @@ public class DistributedLockFactory implements DistributedLock , ApplicationCont
     }
 
     public DistributedLockFactory(LockContext context) {
-        Map<String,DistributedLock> distributedLockMap = getDistributedLocks();
-        for (DistributedLock distributedLock :distributedLockMap.values()){
-            if(distributedLock.handler(context)){
+        Map<String, DistributedLock> distributedLockMap = getDistributedLocks();
+        for (DistributedLock distributedLock : distributedLockMap.values()) {
+            if (distributedLock.handler(context)) {
                 this.distributedLock = distributedLock;
                 this.distributedLock.setLockContext(context);
             }
         }
     }
+
     /**
      * Acquires the lock.
      *
@@ -72,10 +77,9 @@ public class DistributedLockFactory implements DistributedLock , ApplicationCont
      * may throw an (unchecked) exception in such circumstances.  The
      * circumstances and the exception type must be documented by that
      * {@code Lock} implementation.
-     *
      */
     @Override
-    public void lock() {
+    public void lock() throws DistributedLockException {
         this.distributedLock.lock();
     }
 
@@ -220,8 +224,8 @@ public class DistributedLockFactory implements DistributedLock , ApplicationCont
      *                              acquisition is supported)
      */
     @Override
-    public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
-        return this.distributedLock.tryLock(time,unit);
+    public boolean tryLock(long time, TimeUnit unit) throws DistributedLockException {
+        return this.distributedLock.tryLock(time, unit);
     }
 
     /**
@@ -237,7 +241,7 @@ public class DistributedLockFactory implements DistributedLock , ApplicationCont
      * type must be documented by that {@code Lock} implementation.
      */
     @Override
-    public void unlock() {
+    public void unlock() throws DistributedLockLoseException {
         this.distributedLock.unlock();
     }
 
@@ -246,7 +250,7 @@ public class DistributedLockFactory implements DistributedLock , ApplicationCont
         this.applicationContext = applicationContext;
     }
 
-    protected Map<String,DistributedLock> getDistributedLocks(){
+    private Map<String, DistributedLock> getDistributedLocks() {
         return this.applicationContext.getBeansOfType(DistributedLock.class);
     }
 

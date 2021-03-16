@@ -2,7 +2,9 @@ package com.zenghm.distributed.lock.core.redis;
 
 import com.zenghm.distributed.lock.core.LockContext;
 import com.zenghm.distributed.lock.core.LockState;
-import org.springframework.beans.factory.annotation.Value;
+
+import java.util.UUID;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 /**
  * @author Airlen
@@ -13,17 +15,34 @@ public class RedisLockContext implements LockContext {
     private String key;
     private String value;
     private long timeout;
-    private long threadid;
+    private long threadId;
     private LockState state;
-    @Value("redis.redisConnectString")
-    private String redisConnectString;
-    public RedisLockContext(String key,String value,long timeout) {
+    private ScheduledThreadPoolExecutor scheduler;
+
+    public RedisLockContext(String key, long timeout) {
         this.key = key;
-        this.value = value;
+        this.value = UUID.randomUUID().toString();
         this.timeout = timeout;
-        this.threadid = Thread.currentThread().getId();
+        this.threadId = Thread.currentThread().getId();
         this.state = LockState.WAIT;
     }
+
+    public ScheduledThreadPoolExecutor getScheduler() {
+        return scheduler;
+    }
+
+    public void setScheduler(ScheduledThreadPoolExecutor scheduler) {
+        this.scheduler = scheduler;
+    }
+
+    public void setThreadId(long threadId) {
+        this.threadId = threadId;
+    }
+
+    public void setState(LockState state) {
+        this.state = state;
+    }
+
 
     @Override
     public String getKey() {
@@ -42,7 +61,7 @@ public class RedisLockContext implements LockContext {
 
     @Override
     public long getThreadId() {
-        return this.threadid;
+        return this.threadId;
     }
 
     @Override
