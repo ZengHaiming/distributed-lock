@@ -168,7 +168,7 @@ public interface DistributedLock {
      *         while acquiring the lock (and interruption of lock
      *         acquisition is supported)
      */
-    boolean tryLock(long time, TimeUnit unit) throws DistributedLockException;
+    boolean tryLock(long time, TimeUnit unit) throws DistributedLockException, InterruptedException;
 
     /**
      * Releases the lock.
