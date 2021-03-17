@@ -147,6 +147,7 @@ public class RedisDistributedLock implements DistributedLock {
              * 释放锁
              */
             contextThreadLocal.get().setState(LockState.RELEASE);
+            contextThreadLocal.remove();
         } else {
             /**
              * 出现锁丢失
