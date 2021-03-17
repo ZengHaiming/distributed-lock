@@ -23,9 +23,10 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 public class RedisDistributedLock implements DistributedLock {
-
-
-    RedisLockContext context;
+    /**
+     * 需要注意多线程安全问题
+     */
+    private ThreadLocal<RedisLockContext> contextThreadLocal = new ThreadLocal<>();
 
     @Autowired
     StringRedisTemplate stringRedisTemplate;
@@ -43,10 +44,11 @@ public class RedisDistributedLock implements DistributedLock {
 
     @Override
     public void setLockContext(LockContext context) {
-        this.context = (RedisLockContext) context;
-        this.context.setState(LockState.WAIT);
-        this.context.setThreadId(Thread.currentThread().getId());
-        this.context.setScheduler(new ScheduledThreadPoolExecutor(1));
+        RedisLockContext redisLockContext = (RedisLockContext) context;
+        redisLockContext.setState(LockState.WAIT);
+        redisLockContext.setThreadId(Thread.currentThread().getId());
+        redisLockContext.setScheduler(new ScheduledThreadPoolExecutor(1));
+        contextThreadLocal.set(redisLockContext);
     }
 
     /**
@@ -56,7 +58,7 @@ public class RedisDistributedLock implements DistributedLock {
      */
     @Override
     public LockState getLockState() {
-        return context.getLockState();
+        return contextThreadLocal.get().getLockState();
     }
 
     /**
@@ -64,12 +66,12 @@ public class RedisDistributedLock implements DistributedLock {
      */
     @Override
     public long getCurrentHoldThread() {
-        return context.getThreadId();
+        return contextThreadLocal.get().getThreadId();
     }
 
     @Override
     public void lock() throws DistributedLockException {
-        if (!tryLock(this.context.getTimeout() << 1, TimeUnit.SECONDS)) {
+        if (!tryLock(contextThreadLocal.get().getTimeout() << 1, TimeUnit.SECONDS)) {
             throw new DistributedLockException("Distributed lock acquisition timeout.");
         }
     }
@@ -82,22 +84,26 @@ public class RedisDistributedLock implements DistributedLock {
 
     @Override
     public boolean tryLock() {
+
         /**
          * 1、需要判断当前线程是否已经获取到锁 ，未做
          * 2、尝试获取锁
          */
-        boolean isLock = stringRedisTemplate.opsForValue().setIfAbsent(this.context.getKey(),
-                this.context.getValue(), this.context.getTimeout(), TimeUnit.SECONDS);
+        if(LockState.LOCKING.equals(contextThreadLocal.get().getLockState())){
+            return true;
+        }
+        boolean isLock = stringRedisTemplate.opsForValue().setIfAbsent(contextThreadLocal.get().getKey(),
+                contextThreadLocal.get().getValue(), contextThreadLocal.get().getTimeout(), TimeUnit.SECONDS);
         if (isLock) {
             /**
              * 获取到锁
              */
-            this.context.setState(LockState.LOCKING);
+            contextThreadLocal.get().setState(LockState.LOCKING);
             /**
              * 开启锁监测
              */
-            this.context.getScheduler().scheduleWithFixedDelay(this::monitorTask,
-                    this.context.getTimeout() >> 1, this.context.getTimeout() >> 1, TimeUnit.SECONDS);
+            contextThreadLocal.get().getScheduler().scheduleWithFixedDelay(this::monitorTask,
+                    contextThreadLocal.get().getTimeout() >> 1, contextThreadLocal.get().getTimeout() >> 1, TimeUnit.SECONDS);
         }
         return isLock;
     }
@@ -130,14 +136,18 @@ public class RedisDistributedLock implements DistributedLock {
     @Override
     public void unlock() throws DistributedLockLoseException {
         //先停止任务
-        this.context.getScheduler().shutdownNow();
-        String value = stringRedisTemplate.opsForValue().get(this.context.getKey());
+        contextThreadLocal.get().getScheduler().shutdownNow();
+        String value = stringRedisTemplate.opsForValue().get(contextThreadLocal.get().getKey());
         /**
          * 保证持有人解锁 , 此处需要修改为保证原子性的操作
          */
-        if(!StringUtils.hasLength(value)&&value.equals(this.context.getValue())){
-            stringRedisTemplate.delete(this.context.getKey());
-        }else {
+        if (!StringUtils.hasLength(value) && value.equals(contextThreadLocal.get().getValue())
+                && stringRedisTemplate.delete(contextThreadLocal.get().getKey())) {
+            /**
+             * 释放锁
+             */
+            contextThreadLocal.get().setState(LockState.RELEASE);
+        } else {
             /**
              * 出现锁丢失
              */
@@ -145,21 +155,19 @@ public class RedisDistributedLock implements DistributedLock {
         }
     }
 
-
     /**
      * 监测锁的状态，给锁进行续时
      */
-
-    private Boolean monitorTask(){
+    private Boolean monitorTask() {
         /**
          * 此处需要修改为保持原子性的操作， 存在锁丢失的可能 ，例如：redis 主从 、哨兵模式
          */
-        if (stringRedisTemplate.hasKey(this.context.getKey())) {
+        if (stringRedisTemplate.hasKey(contextThreadLocal.get().getKey())) {
             Date now = new Date();
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(now);
-            calendar.add(Calendar.SECOND, (int) this.context.getTimeout());
-            return stringRedisTemplate.expireAt(this.context.getKey(), calendar.getTime());
+            calendar.add(Calendar.SECOND, (int) contextThreadLocal.get().getTimeout());
+            return stringRedisTemplate.expireAt(contextThreadLocal.get().getKey(), calendar.getTime());
         }
         return false;
     }

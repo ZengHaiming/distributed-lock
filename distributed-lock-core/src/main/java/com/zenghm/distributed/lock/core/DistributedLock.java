@@ -79,7 +79,7 @@ public interface DistributedLock {
      *         interrupted while acquiring the lock (and interruption
      *         of lock acquisition is supported)
      */
-    void lockInterruptibly() throws InterruptedException;
+    void lockInterruptibly() throws InterruptedException, DistributedLockException;
 
     /**
      * Acquires the lock only if it is free at the time of invocation.
@@ -108,7 +108,7 @@ public interface DistributedLock {
      * @return {@code true} if the lock was acquired and
      *         {@code false} otherwise
      */
-    boolean tryLock();
+    boolean tryLock() throws DistributedLockException;
 
     /**
      * Acquires the lock if it is free within the given waiting time and the
@@ -182,7 +182,7 @@ public interface DistributedLock {
      * Any restrictions and the exception
      * type must be documented by that {@code Lock} implementation.
      */
-    void unlock() throws DistributedLockLoseException;
+    void unlock() throws DistributedLockException;
 
     void setLockContext(LockContext context);
 
@@ -190,10 +190,10 @@ public interface DistributedLock {
      * 获取锁的状态
      * @return
      */
-    LockState getLockState();
+    LockState getLockState() throws DistributedLockException;
 
     /**
      * 获取锁的当前持有线程id
      */
-    long getCurrentHoldThread();
+    long getCurrentHoldThread() throws DistributedLockException;
 }

@@ -13,6 +13,10 @@ public enum  LockState {
     /**
      * 锁定
      */
-    LOCKING
+    LOCKING,
 
+    /**
+     * 释放
+     */
+    RELEASE
 }

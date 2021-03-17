@@ -17,8 +17,14 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 public class DistributedLockFactory implements DistributedLock, ApplicationContextAware {
-    ApplicationContext applicationContext;
-    DistributedLock distributedLock;
+    /**
+     * 容器上下文
+     */
+    private ApplicationContext applicationContext;
+    /**
+     * 需要注意多线程安全问题
+     */
+    private ThreadLocal<DistributedLock> distributedLockThreadLocal = new ThreadLocal<>();
 
     /**
      * 是否能进行处理
@@ -32,7 +38,13 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
 
     @Override
     public void setLockContext(LockContext context) {
-        //no thing to do
+        Map<String, DistributedLock> distributedLockMap = getDistributedLocks();
+        for (DistributedLock distributedLock : distributedLockMap.values()) {
+            if (distributedLock.handler(context)) {
+                distributedLock.setLockContext(context);
+                distributedLockThreadLocal.set(distributedLock);
+            }
+        }
     }
 
     /**
@@ -41,26 +53,18 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
      * @return
      */
     @Override
-    public LockState getLockState() {
-        return this.distributedLock.getLockState();
+    public LockState getLockState() throws DistributedLockException {
+        contextExceptionNotSet();
+        return this.distributedLockThreadLocal.get().getLockState();
     }
 
     /**
      * 获取锁的当前持有线程id
      */
     @Override
-    public long getCurrentHoldThread() {
-        return this.distributedLock.getCurrentHoldThread();
-    }
-
-    public DistributedLockFactory(LockContext context) {
-        Map<String, DistributedLock> distributedLockMap = getDistributedLocks();
-        for (DistributedLock distributedLock : distributedLockMap.values()) {
-            if (distributedLock.handler(context)) {
-                this.distributedLock = distributedLock;
-                this.distributedLock.setLockContext(context);
-            }
-        }
+    public long getCurrentHoldThread() throws DistributedLockException{
+        contextExceptionNotSet();
+        return this.distributedLockThreadLocal.get().getCurrentHoldThread();
     }
 
     /**
@@ -80,7 +84,8 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
      */
     @Override
     public void lock() throws DistributedLockException {
-        this.distributedLock.lock();
+        contextExceptionNotSet();
+        this.distributedLockThreadLocal.get().lock();
     }
 
     /**
@@ -130,8 +135,9 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
      *                              of lock acquisition is supported)
      */
     @Override
-    public void lockInterruptibly() throws InterruptedException {
-        this.distributedLock.lockInterruptibly();
+    public void lockInterruptibly() throws InterruptedException, DistributedLockException {
+        contextExceptionNotSet();
+        this.distributedLockThreadLocal.get().lockInterruptibly();
     }
 
     /**
@@ -162,8 +168,9 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
      * {@code false} otherwise
      */
     @Override
-    public boolean tryLock() {
-        return this.distributedLock.tryLock();
+    public boolean tryLock() throws DistributedLockException {
+        contextExceptionNotSet();
+        return this.distributedLockThreadLocal.get().tryLock();
     }
 
     /**
@@ -225,7 +232,8 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
      */
     @Override
     public boolean tryLock(long time, TimeUnit unit) throws DistributedLockException {
-        return this.distributedLock.tryLock(time, unit);
+        contextExceptionNotSet();
+        return this.distributedLockThreadLocal.get().tryLock(time, unit);
     }
 
     /**
@@ -241,8 +249,13 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
      * type must be documented by that {@code Lock} implementation.
      */
     @Override
-    public void unlock() throws DistributedLockLoseException {
-        this.distributedLock.unlock();
+    public void unlock() throws DistributedLockException {
+        contextExceptionNotSet();
+        this.distributedLockThreadLocal.get().unlock();
+        /**
+         * 同时移除
+         */
+        this.distributedLockThreadLocal.remove();
     }
 
     @Override
@@ -252,6 +265,12 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
 
     private Map<String, DistributedLock> getDistributedLocks() {
         return this.applicationContext.getBeansOfType(DistributedLock.class);
+    }
+
+    private void contextExceptionNotSet() throws DistributedLockException {
+        if(distributedLockThreadLocal.get()==null){
+            throw new DistributedLockException("Context exception not set.");
+        }
     }
 
 }
