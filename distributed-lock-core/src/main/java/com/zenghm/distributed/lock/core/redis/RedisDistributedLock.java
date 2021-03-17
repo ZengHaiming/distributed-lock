@@ -86,7 +86,7 @@ public class RedisDistributedLock implements DistributedLock {
     public boolean tryLock() {
 
         /**
-         * 1、需要判断当前线程是否已经获取到锁 ，未做
+         * 1、需要判断当前线程是否已经获取到锁
          * 2、尝试获取锁
          */
         if(LockState.LOCKING.equals(contextThreadLocal.get().getLockState())){
