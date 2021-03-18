@@ -6,6 +6,7 @@ package com.zenghm.distributed.lock.core;
  * @description 锁的上下文
  */
 public interface LockContext {
+    String getNamespace();
     String getKey();
     String getValue();
     long getTimeout();

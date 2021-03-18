@@ -1,7 +1,6 @@
 package com.zenghm.distributed.lock.core;
 
 import com.zenghm.distributed.lock.core.exception.DistributedLockException;
-import com.zenghm.distributed.lock.core.exception.DistributedLockLoseException;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -231,7 +230,7 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
      *                              acquisition is supported)
      */
     @Override
-    public boolean tryLock(long time, TimeUnit unit) throws DistributedLockException {
+    public boolean tryLock(long time, TimeUnit unit) throws DistributedLockException, InterruptedException {
         contextExceptionNotSet();
         return this.distributedLockThreadLocal.get().tryLock(time, unit);
     }

@@ -44,11 +44,16 @@ public class RedisDistributedLock implements DistributedLock {
 
     @Override
     public void setLockContext(LockContext context) {
-        RedisLockContext redisLockContext = (RedisLockContext) context;
-        redisLockContext.setState(LockState.WAIT);
-        redisLockContext.setThreadId(Thread.currentThread().getId());
-        redisLockContext.setScheduler(new ScheduledThreadPoolExecutor(1));
-        contextThreadLocal.set(redisLockContext);
+        /**
+         * 存在问题 TODO 一个线程只能获取到一个锁，不同的锁不能获取
+         */
+        if (contextThreadLocal.get() == null) {
+            RedisLockContext redisLockContext = (RedisLockContext) context;
+            redisLockContext.setState(LockState.WAIT);
+            redisLockContext.setThreadId(Thread.currentThread().getId());
+            redisLockContext.setScheduler(new ScheduledThreadPoolExecutor(1));
+            contextThreadLocal.set(redisLockContext);
+        }
     }
 
     /**
@@ -86,10 +91,10 @@ public class RedisDistributedLock implements DistributedLock {
     public boolean tryLock() {
 
         /**
-         * 1、需要判断当前线程是否已经获取到锁
+         * 1、需要判断当前线程是否已经获取到锁 ，TODO 存在问题 ，需要判断是否是同一个锁
          * 2、尝试获取锁
          */
-        if(LockState.LOCKING.equals(contextThreadLocal.get().getLockState())){
+        if (LockState.LOCKING.equals(contextThreadLocal.get().getLockState())) {
             return true;
         }
         boolean isLock = stringRedisTemplate.opsForValue().setIfAbsent(contextThreadLocal.get().getKey(),
@@ -102,7 +107,7 @@ public class RedisDistributedLock implements DistributedLock {
             /**
              * 开启锁监测
              */
-            contextThreadLocal.get().getScheduler().scheduleWithFixedDelay(this::monitorTask,
+            contextThreadLocal.get().getScheduler().scheduleWithFixedDelay(new Monitor(contextThreadLocal.get()),
                     contextThreadLocal.get().getTimeout() >> 1, contextThreadLocal.get().getTimeout() >> 1, TimeUnit.SECONDS);
         }
         return isLock;
@@ -139,7 +144,7 @@ public class RedisDistributedLock implements DistributedLock {
         contextThreadLocal.get().getScheduler().shutdownNow();
         String value = stringRedisTemplate.opsForValue().get(contextThreadLocal.get().getKey());
         /**
-         * 保证持有人解锁 , 此处需要修改为保证原子性的操作
+         * 保证持有人解锁 , 此处需要修改为保证原子性的操作 TODO 需要修改为保持原子性
          */
         if (!StringUtils.hasLength(value) && value.equals(contextThreadLocal.get().getValue())
                 && stringRedisTemplate.delete(contextThreadLocal.get().getKey())) {
@@ -156,20 +161,37 @@ public class RedisDistributedLock implements DistributedLock {
         }
     }
 
+
     /**
-     * 监测锁的状态，给锁进行续时
+     * 监测任务
      */
-    private Boolean monitorTask() {
-        /**
-         * 此处需要修改为保持原子性的操作， 存在锁丢失的可能 ，例如：redis 主从 、哨兵模式
-         */
-        if (stringRedisTemplate.hasKey(contextThreadLocal.get().getKey())) {
-            Date now = new Date();
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(now);
-            calendar.add(Calendar.SECOND, (int) contextThreadLocal.get().getTimeout());
-            return stringRedisTemplate.expireAt(contextThreadLocal.get().getKey(), calendar.getTime());
+    class Monitor implements Runnable {
+        private LockContext context;
+
+        Monitor(LockContext context) {
+            this.context = context;
         }
-        return false;
+
+        @Override
+        public void run() {
+            monitorTask(this.context);
+        }
+
+        /**
+         * 监测锁的状态，给锁进行续时
+         */
+        private Boolean monitorTask(LockContext context) {
+            /**
+             * 此处需要修改为保持原子性的操作， 存在锁丢失的可能 ，例如：redis 主从 、哨兵模式 TODO 需要修改为保持原子性
+             */
+            if (stringRedisTemplate.hasKey(context.getKey())) {
+                Date now = new Date();
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(now);
+                calendar.add(Calendar.SECOND, (int) context.getTimeout());
+                return stringRedisTemplate.expireAt(context.getKey(), calendar.getTime());
+            }
+            return false;
+        }
     }
 }

@@ -10,6 +10,11 @@ import com.zenghm.distributed.lock.core.LockState;
  */
 public class ZookeeperLockContext implements LockContext {
     @Override
+    public String getNamespace() {
+        return null;
+    }
+
+    @Override
     public String getKey() {
         return null;
     }

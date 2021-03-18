@@ -12,6 +12,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
  * @description xxx
  */
 public class RedisLockContext implements LockContext {
+    private String namespace;
     private String key;
     private String value;
     private long timeout;
@@ -19,7 +20,8 @@ public class RedisLockContext implements LockContext {
     private LockState state;
     private ScheduledThreadPoolExecutor scheduler;
 
-    public RedisLockContext(String key, long timeout) {
+    public RedisLockContext(String namespace,String key, long timeout) {
+        this.namespace = namespace;
         this.key = key;
         this.value = UUID.randomUUID().toString();
         this.timeout = timeout;
@@ -43,6 +45,10 @@ public class RedisLockContext implements LockContext {
         this.state = state;
     }
 
+    @Override
+    public String getNamespace() {
+        return this.namespace;
+    }
 
     @Override
     public String getKey() {
