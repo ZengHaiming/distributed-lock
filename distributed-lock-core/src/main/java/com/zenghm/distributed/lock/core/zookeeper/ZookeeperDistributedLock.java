@@ -20,9 +20,8 @@ public class ZookeeperDistributedLock implements DistributedLock {
      */
     @Override
     public boolean handler(LockContext lockContext) {
-        return false;
+        return lockContext instanceof ZookeeperLockContext;
     }
-
 
     @Override
     public void lock() {

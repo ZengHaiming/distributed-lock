@@ -1,6 +1,8 @@
 package com.zenghm.distributed.lock.core;
 
 import com.zenghm.distributed.lock.core.exception.DistributedLockException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -15,7 +17,8 @@ import java.util.concurrent.TimeUnit;
  * @description xxx
  */
 @Service
-public class DistributedLockFactory implements DistributedLock, ApplicationContextAware {
+public class DistributedLockFactory implements DistributedLock,DefaultDistributedLock, ApplicationContextAware {
+    private  final Logger logger = LoggerFactory.getLogger(DistributedLockFactory.class);
     /**
      * 容器上下文
      */
@@ -24,6 +27,26 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
      * 需要注意多线程安全问题
      */
     private ThreadLocal<DistributedLock> distributedLockThreadLocal = new ThreadLocal<>();
+
+    @Override
+    public <T> T lock(LockContext context, LockCallback<T> callback) {
+        String namespace = context.getNamespace();
+        this.setLockContext(context);
+        try {
+            this.lock();
+            return callback.callback(context);
+        } catch (DistributedLockException e) {
+            logger.error(e.getMessage(),e);
+            return null;
+        }finally {
+            try {
+                this.unlock();
+            } catch (DistributedLockException e) {
+                //Warning:business logic idempotent design
+                logger.error(e.getMessage(),e);
+            }
+        }
+    }
 
     /**
      * 是否能进行处理
@@ -41,7 +64,13 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
         for (DistributedLock distributedLock : distributedLockMap.values()) {
             if (distributedLock.handler(context)) {
                 distributedLock.setLockContext(context);
-                distributedLockThreadLocal.set(distributedLock);
+                if(distributedLockThreadLocal.get()==null){
+                    distributedLockThreadLocal.set(distributedLock);
+                }else {
+                    //不为空
+
+                }
+
             }
         }
     }
@@ -271,5 +300,6 @@ public class DistributedLockFactory implements DistributedLock, ApplicationConte
             throw new DistributedLockException("Context exception not set.");
         }
     }
+
 
 }
