@@ -33,14 +33,14 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
         String namespace = context.getNamespace();
         this.setLockContext(context);
         try {
-            this.lock();
+            this.lock(namespace);
             return callback.callback(context);
         } catch (DistributedLockException e) {
             logger.error(e.getMessage(),e);
             return null;
         }finally {
             try {
-                this.unlock();
+                this.unlock(namespace);
             } catch (DistributedLockException e) {
                 //Warning:business logic idempotent design
                 logger.error(e.getMessage(),e);
@@ -81,18 +81,18 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
      * @return
      */
     @Override
-    public LockState getLockState() throws DistributedLockException {
+    public LockState getLockState(String namespace) throws DistributedLockException {
         contextExceptionNotSet();
-        return this.distributedLockThreadLocal.get().getLockState();
+        return this.distributedLockThreadLocal.get().getLockState(namespace);
     }
 
     /**
      * 获取锁的当前持有线程id
      */
     @Override
-    public long getCurrentHoldThread() throws DistributedLockException{
+    public long getCurrentHoldThread(String namespace) throws DistributedLockException{
         contextExceptionNotSet();
-        return this.distributedLockThreadLocal.get().getCurrentHoldThread();
+        return this.distributedLockThreadLocal.get().getCurrentHoldThread(namespace);
     }
 
     /**
@@ -111,9 +111,9 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
      * {@code Lock} implementation.
      */
     @Override
-    public void lock() throws DistributedLockException {
+    public void lock(String namespace) throws DistributedLockException {
         contextExceptionNotSet();
-        this.distributedLockThreadLocal.get().lock();
+        this.distributedLockThreadLocal.get().lock(namespace);
     }
 
     /**
@@ -163,9 +163,9 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
      *                              of lock acquisition is supported)
      */
     @Override
-    public void lockInterruptibly() throws InterruptedException, DistributedLockException {
+    public void lockInterruptibly(String namespace) throws InterruptedException, DistributedLockException {
         contextExceptionNotSet();
-        this.distributedLockThreadLocal.get().lockInterruptibly();
+        this.distributedLockThreadLocal.get().lockInterruptibly(namespace);
     }
 
     /**
@@ -196,9 +196,9 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
      * {@code false} otherwise
      */
     @Override
-    public boolean tryLock() throws DistributedLockException {
+    public boolean tryLock(String namespace) throws DistributedLockException {
         contextExceptionNotSet();
-        return this.distributedLockThreadLocal.get().tryLock();
+        return this.distributedLockThreadLocal.get().tryLock(namespace);
     }
 
     /**
@@ -259,9 +259,9 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
      *                              acquisition is supported)
      */
     @Override
-    public boolean tryLock(long time, TimeUnit unit) throws DistributedLockException, InterruptedException {
+    public boolean tryLock(String namespace,long time, TimeUnit unit) throws DistributedLockException, InterruptedException {
         contextExceptionNotSet();
-        return this.distributedLockThreadLocal.get().tryLock(time, unit);
+        return this.distributedLockThreadLocal.get().tryLock(namespace,time, unit);
     }
 
     /**
@@ -277,9 +277,9 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
      * type must be documented by that {@code Lock} implementation.
      */
     @Override
-    public void unlock() throws DistributedLockException {
+    public void unlock(String namespace) throws DistributedLockException {
         contextExceptionNotSet();
-        this.distributedLockThreadLocal.get().unlock();
+        this.distributedLockThreadLocal.get().unlock(namespace);
         /**
          * 同时移除
          */

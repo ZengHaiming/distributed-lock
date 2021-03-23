@@ -62,7 +62,7 @@ public class RedisDistributedLock implements DistributedLock {
      * @return
      */
     @Override
-    public LockState getLockState() {
+    public LockState getLockState(String namespace) {
         return contextThreadLocal.get().getLockState();
     }
 
@@ -70,25 +70,25 @@ public class RedisDistributedLock implements DistributedLock {
      * 获取锁的当前持有线程id
      */
     @Override
-    public long getCurrentHoldThread() {
+    public long getCurrentHoldThread(String namespace) {
         return contextThreadLocal.get().getThreadId();
     }
 
     @Override
-    public void lock() throws DistributedLockException {
-        if (!tryLock(contextThreadLocal.get().getTimeout() << 1, TimeUnit.SECONDS)) {
+    public void lock(String namespace) throws DistributedLockException {
+        if (!tryLock(namespace,contextThreadLocal.get().getTimeout() << 1, TimeUnit.SECONDS)) {
             throw new DistributedLockException("Distributed lock acquisition timeout.");
         }
     }
 
     @Override
-    public void lockInterruptibly() throws InterruptedException {
+    public void lockInterruptibly(String namespace) throws InterruptedException {
 
     }
 
 
     @Override
-    public boolean tryLock() {
+    public boolean tryLock(String namespace) {
 
         /**
          * 1、需要判断当前线程是否已经获取到锁 ，TODO 存在问题 ，需要判断是否是同一个锁
@@ -115,13 +115,13 @@ public class RedisDistributedLock implements DistributedLock {
 
 
     @Override
-    public boolean tryLock(long time, TimeUnit unit) throws DistributedLockException {
+    public boolean tryLock(String namespace,long time, TimeUnit unit) throws DistributedLockException {
         /**
          * 如果未获取到锁则开始自旋
          */
         long sleep = LockConstant.SPIN_TIME;
         long timeout = TimeUnit.MILLISECONDS.convert(time, unit);
-        while (!tryLock()) {
+        while (!tryLock(namespace)) {
             try {
                 /**
                  * 防止其他地方出现死锁
@@ -139,7 +139,7 @@ public class RedisDistributedLock implements DistributedLock {
     }
 
     @Override
-    public void unlock() throws DistributedLockLoseException {
+    public void unlock(String namespace) throws DistributedLockLoseException {
         //先停止任务
         contextThreadLocal.get().getScheduler().shutdownNow();
         String value = stringRedisTemplate.opsForValue().get(contextThreadLocal.get().getKey());

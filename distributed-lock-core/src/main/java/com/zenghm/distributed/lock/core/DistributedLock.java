@@ -31,7 +31,7 @@ public interface DistributedLock {
      * circumstances and the exception type must be documented by that
      * {@code Lock} implementation.
      */
-    void lock() throws DistributedLockException;
+    void lock(String namespace) throws DistributedLockException;
 
     /**
      * Acquires the lock unless the current thread is
@@ -79,7 +79,7 @@ public interface DistributedLock {
      *         interrupted while acquiring the lock (and interruption
      *         of lock acquisition is supported)
      */
-    void lockInterruptibly() throws InterruptedException, DistributedLockException;
+    void lockInterruptibly(String namespace) throws InterruptedException, DistributedLockException;
 
     /**
      * Acquires the lock only if it is free at the time of invocation.
@@ -108,7 +108,7 @@ public interface DistributedLock {
      * @return {@code true} if the lock was acquired and
      *         {@code false} otherwise
      */
-    boolean tryLock() throws DistributedLockException;
+    boolean tryLock(String namespace) throws DistributedLockException;
 
     /**
      * Acquires the lock if it is free within the given waiting time and the
@@ -168,7 +168,7 @@ public interface DistributedLock {
      *         while acquiring the lock (and interruption of lock
      *         acquisition is supported)
      */
-    boolean tryLock(long time, TimeUnit unit) throws DistributedLockException, InterruptedException;
+    boolean tryLock(String namespace,long time, TimeUnit unit) throws DistributedLockException, InterruptedException;
 
     /**
      * Releases the lock.
@@ -182,7 +182,7 @@ public interface DistributedLock {
      * Any restrictions and the exception
      * type must be documented by that {@code Lock} implementation.
      */
-    void unlock() throws DistributedLockException;
+    void unlock(String namespace) throws DistributedLockException;
 
     void setLockContext(LockContext context);
 
@@ -190,10 +190,10 @@ public interface DistributedLock {
      * 获取锁的状态
      * @return
      */
-    LockState getLockState() throws DistributedLockException;
+    LockState getLockState(String namespace) throws DistributedLockException;
 
     /**
      * 获取锁的当前持有线程id
      */
-    long getCurrentHoldThread() throws DistributedLockException;
+    long getCurrentHoldThread(String namespace) throws DistributedLockException;
 }

@@ -24,29 +24,29 @@ public class ZookeeperDistributedLock implements DistributedLock {
     }
 
     @Override
-    public void lock() {
+    public void lock(String namespace) {
 
     }
 
     @Override
-    public void lockInterruptibly() throws InterruptedException {
+    public void lockInterruptibly(String namespace) throws InterruptedException {
 
     }
 
 
     @Override
-    public boolean tryLock() {
+    public boolean tryLock(String namespace) {
         return false;
     }
 
 
     @Override
-    public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+    public boolean tryLock(String namespace,long time, TimeUnit unit) throws InterruptedException {
         return false;
     }
 
     @Override
-    public void unlock() {
+    public void unlock(String namespace) {
 
     }
 
@@ -61,7 +61,7 @@ public class ZookeeperDistributedLock implements DistributedLock {
      * @return
      */
     @Override
-    public LockState getLockState() {
+    public LockState getLockState(String namespace) {
         return null;
     }
 
@@ -69,7 +69,7 @@ public class ZookeeperDistributedLock implements DistributedLock {
      * 获取锁的当前持有线程id
      */
     @Override
-    public long getCurrentHoldThread() {
+    public long getCurrentHoldThread(String namespace) {
         return 0;
     }
 }
