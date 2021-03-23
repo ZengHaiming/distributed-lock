@@ -3,6 +3,7 @@ package com.zenghm.distributed.lock.core.zookeeper;
 import com.zenghm.distributed.lock.core.DistributedLock;
 import com.zenghm.distributed.lock.core.LockContext;
 import com.zenghm.distributed.lock.core.LockState;
+import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
 
@@ -11,6 +12,7 @@ import java.util.concurrent.TimeUnit;
  * @date 2021/3/16
  * @description xxx
  */
+@Service
 public class ZookeeperDistributedLock implements DistributedLock {
     /**
      * 是否能进行处理
