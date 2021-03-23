@@ -53,8 +53,8 @@ public class ZookeeperDistributedLock implements DistributedLock {
     }
 
     @Override
-    public void setLockContext(LockContext context) {
-
+    public Boolean setLockContext(LockContext context) {
+        return false;
     }
 
     /**

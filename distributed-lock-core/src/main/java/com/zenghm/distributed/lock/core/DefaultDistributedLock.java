@@ -7,4 +7,5 @@ package com.zenghm.distributed.lock.core;
  */
 public interface DefaultDistributedLock {
     <T> T lock(LockContext context,LockCallback<T> callback);
+    <T> T tryLock(LockContext context,LockCallback<T> callback);
 }

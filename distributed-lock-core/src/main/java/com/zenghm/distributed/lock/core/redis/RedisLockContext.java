@@ -3,6 +3,7 @@ package com.zenghm.distributed.lock.core.redis;
 import com.zenghm.distributed.lock.core.LockContext;
 import com.zenghm.distributed.lock.core.LockState;
 
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
@@ -73,5 +74,24 @@ public class RedisLockContext implements LockContext {
     @Override
     public LockState getLockState() {
         return this.state;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        RedisLockContext that = (RedisLockContext) o;
+        return threadId == that.threadId &&
+                Objects.equals(namespace, that.namespace) &&
+                Objects.equals(key, that.key);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(namespace, key, threadId);
     }
 }

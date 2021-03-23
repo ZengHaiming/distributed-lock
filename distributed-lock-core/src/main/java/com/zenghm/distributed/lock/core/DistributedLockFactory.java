@@ -17,8 +17,8 @@ import java.util.concurrent.TimeUnit;
  * @description xxx
  */
 @Service
-public class DistributedLockFactory implements DistributedLock,DefaultDistributedLock, ApplicationContextAware {
-    private  final Logger logger = LoggerFactory.getLogger(DistributedLockFactory.class);
+public class DistributedLockFactory implements DistributedLock, DefaultDistributedLock, ApplicationContextAware {
+    private final Logger logger = LoggerFactory.getLogger(DistributedLockFactory.class);
     /**
      * 容器上下文
      */
@@ -31,19 +31,47 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
     @Override
     public <T> T lock(LockContext context, LockCallback<T> callback) {
         String namespace = context.getNamespace();
-        this.setLockContext(context);
+        if(!this.setLockContext(context)){
+            return null;
+        }
         try {
             this.lock(namespace);
             return callback.callback(context);
         } catch (DistributedLockException e) {
-            logger.error(e.getMessage(),e);
+            logger.error(e.getMessage(), e);
             return null;
-        }finally {
+        } finally {
             try {
                 this.unlock(namespace);
             } catch (DistributedLockException e) {
                 //Warning:business logic idempotent design
-                logger.error(e.getMessage(),e);
+                logger.error(e.getMessage(), e);
+            }
+        }
+    }
+
+    @Override
+    public <T> T tryLock(LockContext context, LockCallback<T> callback) {
+        String namespace = context.getNamespace();
+        if(!this.setLockContext(context)){
+            return null;
+        }
+        try {
+            if(this.tryLock(namespace)){
+                return callback.callback(context);
+            }else {
+                //acquire lock fail
+                return null;
+            }
+        } catch (DistributedLockException e) {
+            logger.error(e.getMessage(), e);
+            return null;
+        } finally {
+            try {
+                this.unlock(namespace);
+            } catch (DistributedLockException e) {
+                //Warning:business logic idempotent design
+                logger.error(e.getMessage(), e);
             }
         }
     }
@@ -59,20 +87,28 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
     }
 
     @Override
-    public void setLockContext(LockContext context) {
+    public Boolean setLockContext(LockContext context) {
         Map<String, DistributedLock> distributedLockMap = getDistributedLocks();
         for (DistributedLock distributedLock : distributedLockMap.values()) {
             if (distributedLock.handler(context)) {
-                distributedLock.setLockContext(context);
-                if(distributedLockThreadLocal.get()==null){
+                Boolean setDistributedLockinInvoker;
+                DistributedLock existDistributedLock = distributedLockThreadLocal.get();
+                if (existDistributedLock == null) {
+                    //未设置
                     distributedLockThreadLocal.set(distributedLock);
-                }else {
-                    //不为空
-
+                    setDistributedLockinInvoker = Boolean.TRUE;
+                } else if (!existDistributedLock.getClass().equals(distributedLock.getClass())) {
+                    //已设置 ，但是当前执行分布式锁类型与已经设置的分布式锁不一致
+                    logger.error("The same thread must use the same distributed lock.");
+                    setDistributedLockinInvoker = Boolean.FALSE;
+                } else {
+                    //已设置 ，但是当前执行分布式锁类型与已经设置的分布式锁一致 ，无须重新设置
+                    setDistributedLockinInvoker = Boolean.TRUE;
                 }
-
+                return setDistributedLockinInvoker && distributedLock.setLockContext(context);
             }
         }
+        return Boolean.FALSE;
     }
 
     /**
@@ -90,7 +126,7 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
      * 获取锁的当前持有线程id
      */
     @Override
-    public long getCurrentHoldThread(String namespace) throws DistributedLockException{
+    public long getCurrentHoldThread(String namespace) throws DistributedLockException {
         contextExceptionNotSet();
         return this.distributedLockThreadLocal.get().getCurrentHoldThread(namespace);
     }
@@ -259,9 +295,9 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
      *                              acquisition is supported)
      */
     @Override
-    public boolean tryLock(String namespace,long time, TimeUnit unit) throws DistributedLockException, InterruptedException {
+    public boolean tryLock(String namespace, long time, TimeUnit unit) throws DistributedLockException, InterruptedException {
         contextExceptionNotSet();
-        return this.distributedLockThreadLocal.get().tryLock(namespace,time, unit);
+        return this.distributedLockThreadLocal.get().tryLock(namespace, time, unit);
     }
 
     /**
@@ -296,7 +332,7 @@ public class DistributedLockFactory implements DistributedLock,DefaultDistribute
     }
 
     private void contextExceptionNotSet() throws DistributedLockException {
-        if(distributedLockThreadLocal.get()==null){
+        if (distributedLockThreadLocal.get() == null) {
             throw new DistributedLockException("Context exception not set.");
         }
     }

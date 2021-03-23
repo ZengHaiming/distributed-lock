@@ -184,7 +184,7 @@ public interface DistributedLock {
      */
     void unlock(String namespace) throws DistributedLockException;
 
-    void setLockContext(LockContext context);
+    Boolean setLockContext(LockContext context);
 
     /**
      * 获取锁的状态
