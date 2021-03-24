@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("distributedlock")
 public class DistributedLockController {
+    private Integer state = 50;
     private final Logger logger = LoggerFactory.getLogger(DistributedLockController.class);
     @Autowired
     DefaultDistributedLock distributedLockFactory;
@@ -27,8 +28,11 @@ public class DistributedLockController {
         RedisLockContext context = new RedisLockContext("test","1234",3);
         Object obj = distributedLockFactory.tryLock(context, context1 -> {
             logger.info("redis lock acquire success.");
+            if(state>0){
+                logger.info("state:"+(--state));
+            }
             try {
-                Thread.sleep(10000);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -36,6 +40,8 @@ public class DistributedLockController {
         });
         if(obj!=null){
             logger.info("execute success.");
+        }else {
+            logger.info("execute fail.");
         }
         return "200";
     }
