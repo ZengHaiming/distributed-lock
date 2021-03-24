@@ -8,6 +8,7 @@ package com.zenghm.distributed.lock.core;
 public interface LockCallback<R> {
     /**
      * 分布式锁回调函数 , 获取锁成功后调用
+     * 在回调方法中请仍做到幂等
      * @param context 锁上下文
      * @return
      */
