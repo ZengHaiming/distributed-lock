@@ -51,7 +51,7 @@ public class RedisDistributedLock implements DistributedLock {
         /**
          * 通过命名空间获取多个锁，同一个命名空间一个线程只能获取一个锁
          */
-        if(null==contextThreadLocal.get(context.getNamespace())){
+        if (null == contextThreadLocal.get(context.getNamespace())) {
             contextThreadLocal.put(context.getNamespace(), new ThreadLocal<>());
         }
         LockContext existLockContext = contextThreadLocal.get(context.getNamespace()).get();
@@ -108,21 +108,22 @@ public class RedisDistributedLock implements DistributedLock {
          * 1、需要判断当前线程是否已经获取到锁 ，TODO 存在问题 ，需要判断是否是同一个锁
          * 2、尝试获取锁
          */
-        if (LockState.LOCKING.equals(contextThreadLocal.get(namespace).get().getLockState())) {
+        RedisLockContext context = contextThreadLocal.get(namespace).get();
+        if (LockState.LOCKING.equals(context.getLockState())) {
             return true;
         }
-        boolean isLock = stringRedisTemplate.opsForValue().setIfAbsent(contextThreadLocal.get(namespace).get().getKey(),
-                contextThreadLocal.get(namespace).get().getValue(), contextThreadLocal.get(namespace).get().getTimeout(), TimeUnit.SECONDS);
+        boolean isLock = stringRedisTemplate.opsForValue().setIfAbsent(context.getNamespaceAndKey(),
+                context.getValue(), context.getTimeout(), TimeUnit.SECONDS);
         if (isLock) {
             /**
              * 获取到锁
              */
-            contextThreadLocal.get(namespace).get().setState(LockState.LOCKING);
+            context.setState(LockState.LOCKING);
             /**
              * 开启锁监测
              */
-            contextThreadLocal.get(namespace).get().getScheduler().scheduleWithFixedDelay(new Monitor(contextThreadLocal.get(namespace).get()),
-                    contextThreadLocal.get(namespace).get().getTimeout() >> 1, contextThreadLocal.get(namespace).get().getTimeout() >> 1, TimeUnit.SECONDS);
+            context.getScheduler().scheduleWithFixedDelay(new Monitor(context),
+                    context.getTimeout() >> 1, context.getTimeout() >> 1, TimeUnit.SECONDS);
         }
         return isLock;
     }
@@ -155,24 +156,27 @@ public class RedisDistributedLock implements DistributedLock {
     @Override
     public void unlock(String namespace) throws DistributedLockLoseException {
         //先停止任务
-        contextThreadLocal.get(namespace).get().getScheduler().shutdownNow();
-        String value = stringRedisTemplate.opsForValue().get(contextThreadLocal.get(namespace).get().getKey());
-        /**
-         * 保证持有人解锁 , 此处需要修改为保证原子性的操作 TODO 需要修改为保持原子性
-         */
-        contextThreadLocal.get(namespace).get().setState(LockState.RELEASE);
+        RedisLockContext context = contextThreadLocal.get(namespace).get();
+        context.getScheduler().shutdownNow();
         contextThreadLocal.get(namespace).remove();
-        if (!StringUtils.hasLength(value) && value.equals(contextThreadLocal.get(namespace).get().getValue())
-                && stringRedisTemplate.delete(contextThreadLocal.get(namespace).get().getKey())) {
+        if (context.getLockState().equals(LockState.LOCKING)) {
+            String value = stringRedisTemplate.opsForValue().get(context.getNamespaceAndKey());
             /**
-             * 释放锁
+             * 保证持有人解锁 , 此处需要修改为保证原子性的操作 TODO 需要修改为保持原子性
              */
-            //no thing to do
-        } else {
-            /**
-             * 出现锁丢失
-             */
-            throw new DistributedLockLoseException("Distributed lock lost.");
+            if (StringUtils.hasLength(value) && value.equals(context.getValue())
+                    && stringRedisTemplate.delete(context.getNamespaceAndKey())) {
+                /**
+                 * 释放锁
+                 */
+                context.setState(LockState.RELEASE);
+                logger.info("Lock released successfully.");
+            } else {
+                /**
+                 * 出现锁丢失
+                 */
+                throw new DistributedLockLoseException("Distributed lock lost.");
+            }
         }
     }
 
@@ -181,9 +185,9 @@ public class RedisDistributedLock implements DistributedLock {
      * 监测任务
      */
     class Monitor implements Runnable {
-        private LockContext context;
+        private RedisLockContext context;
 
-        Monitor(LockContext context) {
+        Monitor(RedisLockContext context) {
             this.context = context;
         }
 
@@ -195,16 +199,16 @@ public class RedisDistributedLock implements DistributedLock {
         /**
          * 监测锁的状态，给锁进行续时
          */
-        private Boolean monitorTask(LockContext context) {
+        private Boolean monitorTask(RedisLockContext context) {
             /**
              * 此处需要修改为保持原子性的操作， 存在锁丢失的可能 ，例如：redis 主从 、哨兵模式 TODO 需要修改为保持原子性
              */
-            if (stringRedisTemplate.hasKey(context.getKey())) {
+            if (stringRedisTemplate.hasKey(context.getNamespaceAndKey())) {
                 Date now = new Date();
                 Calendar calendar = Calendar.getInstance();
                 calendar.setTime(now);
                 calendar.add(Calendar.SECOND, (int) context.getTimeout());
-                return stringRedisTemplate.expireAt(context.getKey(), calendar.getTime());
+                return stringRedisTemplate.expireAt(context.getNamespaceAndKey(), calendar.getTime());
             }
             return false;
         }

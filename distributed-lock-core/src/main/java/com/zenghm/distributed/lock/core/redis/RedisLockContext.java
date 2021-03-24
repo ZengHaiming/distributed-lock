@@ -21,6 +21,10 @@ public class RedisLockContext implements LockContext {
     private LockState state;
     private ScheduledThreadPoolExecutor scheduler;
 
+    public String getNamespaceAndKey(){
+       return String.format("%s:%s",getNamespace(),getKey());
+    }
+
     public RedisLockContext(String namespace,String key, long timeout) {
         this.namespace = namespace;
         this.key = key;

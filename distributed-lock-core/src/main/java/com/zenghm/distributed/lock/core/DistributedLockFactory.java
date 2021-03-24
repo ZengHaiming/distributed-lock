@@ -315,11 +315,12 @@ public class DistributedLockFactory implements DistributedLock, DefaultDistribut
     @Override
     public void unlock(String namespace) throws DistributedLockException {
         contextExceptionNotSet();
-        this.distributedLockThreadLocal.get().unlock(namespace);
+        DistributedLock distributedLock = this.distributedLockThreadLocal.get();
         /**
          * 同时移除
          */
         this.distributedLockThreadLocal.remove();
+        distributedLock.unlock(namespace);
     }
 
     @Override
