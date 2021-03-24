@@ -20,12 +20,22 @@ public class RedisLockContext implements LockContext {
     private long threadId;
     private LockState state;
     private ScheduledThreadPoolExecutor scheduler;
+// 同一线程多次获取锁，是否存在问题待考虑
+//    private Integer lockCount = 0;
+//
+//    public void acquire() {
+//        ++lockCount;
+//    }
+//
+//    public Integer release() {
+//        return --lockCount;
+//    }
 
-    public String getNamespaceAndKey(){
-       return String.format("%s:%s",getNamespace(),getKey());
+    public String getNamespaceAndKey() {
+        return String.format("%s:%s", getNamespace(), getKey());
     }
 
-    public RedisLockContext(String namespace,String key, long timeout) {
+    public RedisLockContext(String namespace, String key, long timeout) {
         this.namespace = namespace;
         this.key = key;
         this.value = UUID.randomUUID().toString();

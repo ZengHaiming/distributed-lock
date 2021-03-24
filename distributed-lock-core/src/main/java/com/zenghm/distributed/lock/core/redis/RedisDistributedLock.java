@@ -105,7 +105,7 @@ public class RedisDistributedLock implements DistributedLock {
     public boolean tryLock(String namespace) {
 
         /**
-         * 1、需要判断当前线程是否已经获取到锁 ，TODO 存在问题 ，需要判断是否是同一个锁
+         * 1、需要判断当前线程是否已经获取到锁
          * 2、尝试获取锁
          */
         RedisLockContext context = contextThreadLocal.get(namespace).get();
