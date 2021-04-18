@@ -59,16 +59,15 @@ public class ZookeeperDistributedLock implements DistributedLock , InitializingB
 
 
     @Override
-    public void lock(String namespace) {
-
-
+    public void lock(String namespace) throws DistributedLockException{
+        if(!tryLock(namespace,contextThreadLocal.get(namespace).get().getTimeout() << 1, TimeUnit.SECONDS)){
+            throw new DistributedLockException("Distributed lock acquisition timeout.");
+        }
     }
 
     @Override
     public void lockInterruptibly(String namespace) throws DistributedLockException {
-        if(!tryLock(namespace,contextThreadLocal.get(namespace).get().getTimeout() << 1, TimeUnit.SECONDS)){
-            throw new DistributedLockException("Distributed lock acquisition timeout.");
-        }
+
     }
 
 
