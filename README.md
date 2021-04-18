@@ -28,6 +28,15 @@
 - 读与写
 + 写互斥
 + 读共享
+-------------------------------
+## zookeeper 实现锁接口
+org.apache.curator.framework.recipes.locks.InterProcessLock
+## redis 实现锁接口
+org.redisson.api.RLock
+##对应框架
+redisson
+spring-cloud-starter-zookeeper-config
+
 
 
 

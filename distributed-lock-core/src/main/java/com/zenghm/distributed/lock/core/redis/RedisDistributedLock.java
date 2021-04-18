@@ -30,7 +30,7 @@ public class RedisDistributedLock implements DistributedLock {
     /**
      * 需要注意多线程安全问题
      */
-    private static ConcurrentHashMap<String, ThreadLocal<RedisLockContext>> contextThreadLocal = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, ThreadLocal<RedisLockContext>> contextThreadLocal = new ConcurrentHashMap<>();
 
     @Autowired
     StringRedisTemplate stringRedisTemplate;
@@ -52,7 +52,11 @@ public class RedisDistributedLock implements DistributedLock {
          * 通过命名空间获取多个锁，同一个命名空间一个线程只能获取一个锁
          */
         if (null == contextThreadLocal.get(context.getNamespace())) {
-            contextThreadLocal.put(context.getNamespace(), new ThreadLocal<>());
+            synchronized (this){
+                if(null == contextThreadLocal.get(context.getNamespace())){
+                    contextThreadLocal.put(context.getNamespace(), new ThreadLocal<>());
+                }
+            }
         }
         LockContext existLockContext = contextThreadLocal.get(context.getNamespace()).get();
         if (existLockContext == null ||
@@ -184,7 +188,7 @@ public class RedisDistributedLock implements DistributedLock {
     /**
      * 监测任务
      */
-    class Monitor implements Runnable {
+    private class Monitor implements Runnable {
         private RedisLockContext context;
 
         Monitor(RedisLockContext context) {

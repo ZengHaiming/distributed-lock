@@ -1,5 +1,6 @@
 package com.zenghm.distributed.lock.core.redis;
 
+import com.zenghm.distributed.lock.core.LockConstant;
 import com.zenghm.distributed.lock.core.LockContext;
 import com.zenghm.distributed.lock.core.LockState;
 
@@ -32,7 +33,7 @@ public class RedisLockContext implements LockContext {
 //    }
 
     public String getNamespaceAndKey() {
-        return String.format("%s:%s", getNamespace(), getKey());
+        return String.format("%s:%s:%s", LockConstant.ROOT_PATH, getNamespace(), getKey());
     }
 
     public RedisLockContext(String namespace, String key, long timeout) {
